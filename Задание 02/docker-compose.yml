@@ -1,0 +1,33 @@
+
+
+services:
+  auth_service:
+    build: ./auth_service
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=ozon-secret-key-2024
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+  user_service:
+    build: ./user_service
+    ports:
+      - "8001:8000"
+    depends_on:
+      - auth_service
+    environment:
+      - SECRET_KEY=ozon-secret-key-2024
+
+  product_service:
+    build: ./product_service
+    ports:
+      - "8002:8000"
+    depends_on:
+      - auth_service
+    environment:
+      - SECRET_KEY=ozon-secret-key-2024
+
+networks:
+  default:
+    driver: bridge
