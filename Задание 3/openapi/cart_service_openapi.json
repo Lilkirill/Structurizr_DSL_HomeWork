@@ -1,0 +1,20 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Cart Service",
+      "version": "1.0.0"
+    },
+    "paths": {
+      "/cart/": {
+        "post": {
+          "summary": ""
+        }
+      },
+      "/cart/{user_id}": {
+        "get": {
+          "summary": ""
+        }
+      }
+    }
+  }
+  
