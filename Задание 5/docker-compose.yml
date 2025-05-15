@@ -1,0 +1,102 @@
+
+
+services:
+  postgres_db:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand({ ping: 1 })' | mongosh --quiet"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  user_service:
+    build: 
+      context: ./user_service
+      dockerfile: Dockerfile
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: "redis://redis:6379"
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
+    command: ["sh", "-c", "python init_db.py && ./wait-for-it.sh postgres_db:5432 -- uvicorn main:app --host 0.0.0.0 --port 8000"]
+
+  product_service:
+    build: 
+      context: ./product_service
+      dockerfile: Dockerfile
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGO_URL: "mongodb://mongo:27017"
+    ports:
+      - "8001:8001"
+    networks:
+      - backend
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+
+  cart_service:
+    build: 
+      context: ./cart_service
+      dockerfile: Dockerfile
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    ports:
+      - "8002:8002"
+    networks:
+      - backend
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
